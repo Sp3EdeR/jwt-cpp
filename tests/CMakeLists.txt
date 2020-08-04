@@ -43,6 +43,12 @@ target_link_libraries(jwt-cpp-test PRIVATE jwt-cpp::jwt-cpp
 
 gtest_add_tests(TARGET jwt-cpp-test)
 
+find_package(RapidJSON)
+if (RapidJSON_FOUND)
+    target_sources(jwt-cpp-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/RapidJsonTest.cpp)
+    target_include_directories(jwt-cpp-test PRIVATE ${RapidJSON_INCLUDE_DIRS})
+endif()
+
 if(${COVERAGE})
   include("code-coverage")
   setup_coverage(jwt-cpp-test)

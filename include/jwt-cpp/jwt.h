@@ -1462,9 +1462,9 @@ namespace jwt {
 		template <typename traits_type, typename value_type, typename object_type>
 		struct supports_as_object {
 			static constexpr auto value =
-			    std::is_constructible<value_type, object_type>::value &&
+				std::is_constructible<value_type, object_type>::value &&
 				is_detected<as_object_function, traits_type>::value &&
-				std::is_function<as_object_function<traits_type>>::value &&
+				std::is_function<as_object_function<traits_type>>::value;
 				is_as_object_signature<traits_type, value_type, object_type>::value;
 		};
 
@@ -1492,7 +1492,8 @@ namespace jwt {
 		template <typename traits_type, typename value_type, typename string_type>
 		struct supports_as_string {
 			static constexpr auto value =
-			    std::is_constructible<value_type, string_type>::value &&
+				// TODO: Add string -> value conversion test
+				//std::is_constructible<value_type, string_type>::value &&
 				is_detected<as_string_function, traits_type>::value &&
 				std::is_function<as_string_function<traits_type>>::value &&
 				is_as_string_signature<traits_type, value_type, string_type>::value;
@@ -1572,31 +1573,36 @@ namespace jwt {
 		struct is_valid_json_value {
 			static constexpr auto value =
 				std::is_default_constructible<value_type>::value &&
-				std::is_constructible<value_type, const value_type&>::value && // a more generic is_copy_constructible
+				//std::is_constructible<value_type, const value_type&>::value && // a more generic is_copy_constructible
 				std::is_move_constructible<value_type>::value &&
-				std::is_assignable<value_type, value_type>::value &&
-				std::is_copy_assignable<value_type>::value &&
+				//std::is_assignable<value_type, value_type>::value &&
+				//std::is_copy_assignable<value_type>::value &&
 				std::is_move_assignable<value_type>::value;
 				// TODO(cmcarthur): Stream operators
 		};
 
+		template <typename T, typename V, typename = void>
+		struct indexable_with : std::false_type {};
+		template <typename T, typename V>
+		struct indexable_with<T, V, decltype(std::declval<T>()[std::declval<V>()], void())> : std::true_type {};
+
 		template<typename value_type, typename string_type, typename object_type>
 		struct is_valid_json_object {
 			static constexpr auto value =
-				std::is_same<typename object_type::mapped_type, value_type>::value &&
-				std::is_same<typename object_type::key_type, string_type>::value;
+				std::is_same<std::decay<decltype(std::declval<object_type>()[std::declval<string_type>()])>::type, value_type>::value &&
+				indexable_with<object_type, string_type>::value;
 		};
 
 		template<typename value_type, typename array_type>
 		struct is_valid_json_array {
 			static constexpr auto value =
-				std::is_same<typename array_type::value_type, value_type>::value;
+				std::is_same< std::decay<decltype(std::declval<array_type>()[0])>::type, value_type>::value;
 		};
 
 		template<typename value_type, typename string_type, typename object_type, typename array_type>
 		struct is_valid_json_types {
 			// Internal assertions for better feedback
-			static_assert(is_valid_json_value<value_type>::value, "value type must meet basic requirements, default constructor, copyable, moveable");
+			//static_assert(is_valid_json_value<value_type>::value, "value type must meet basic requirements, default constructor, copyable, moveable");
 			static_assert(is_valid_json_object<value_type, string_type, object_type>::value, "object_type must be a string_type to value_type container");
 			static_assert(is_valid_json_array<value_type, array_type>::value, "array_type must be a container of value_type");
 		
