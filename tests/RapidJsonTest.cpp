@@ -185,7 +185,7 @@ TEST(RapidJsonTest, BasicClaims) {
 
 	const auto string = rapidjson_claim(std::string("string"));
 	const auto array = rapidjson_claim(std::set<std::string>{"string", "string"});
-	const auto integer = rapidjson_claim(159816816);
+	const auto integer = rapidjson_claim(jwt::default_rapidjson_traits::value_type(159816816));
 }
 
 TEST(RapidJsonTest, AudienceAsString) {

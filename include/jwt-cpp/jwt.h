@@ -1464,7 +1464,7 @@ namespace jwt {
 			static constexpr auto value =
 				std::is_constructible<value_type, object_type>::value &&
 				is_detected<as_object_function, traits_type>::value &&
-				std::is_function<as_object_function<traits_type>>::value;
+				std::is_function<as_object_function<traits_type>>::value &&
 				is_as_object_signature<traits_type, value_type, object_type>::value;
 		};
 
