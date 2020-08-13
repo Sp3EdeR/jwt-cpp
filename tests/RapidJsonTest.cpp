@@ -31,22 +31,107 @@ namespace jwt
 	struct rapidjson_traits
 	{
 		using document_type = rapidjson::GenericDocument<Encoding, Allocator, StackAllocator>;
-		using value_type = typename document_type::ValueType;
-		using array_type = typename value_type::Array;
 		using string_type = std::string;
 		using number_type = double;
 		using integer_type = int64_t;
 		using boolean_type = bool;
-		struct object_type
+		struct array_type;
+		struct object_type;
+		template <bool Const>
+		struct GenericMemberIterator
 		{
-			object_type() : value(rapidjson::kObjectType) {}
-			object_type(const object_type&) = delete;
-			void operator =(const object_type&) = delete;
-			object_type(object_type&& other) : value(std::move(other.value)) {}
-			object_type& operator =(object_type&& other) { value = std::move(other.value); return *this; }
+		};
 
-			explicit operator const value_type&() const { return value; }
-			explicit operator value_type () { return value_type().CopyFrom(value, Allocator()); } // TODO: Fix using same allocator
+		struct value_type
+		{
+			value_type() = default;
+			value_type(const value_type& other)
+			{
+				value.CopyFrom(other.value);
+			}
+			value_type& operator =(const value_type& other)
+			{
+				value.CopyFrom(other.value);
+				return *this;
+			}
+			value_type(value_type&&) = default;
+			value_type& operator =(value_type&&) = default;
+
+			explicit value_type(bool val) : value(val) {}
+			explicit value_type(int val) : value(val) {}
+			explicit value_type(unsigned val) : value(val) {}
+			explicit value_type(int64_t val) : value(val) {}
+			explicit value_type(uint64_t val) : value(val) {}
+			explicit value_type(double val) : value(val) {}
+			explicit value_type(float val) : value(val) {}
+			explicit value_type(std::string val) : value(val.c_str(), val.length(), Allocator()) {} // TODO: Fix using same allocator
+
+			explicit value_type(const array_type&)
+			{
+				value.CopyFrom(other.value);
+			}
+			explicit value_type(array_type&&) : value(std::move(other.value)) { }
+			explicit value_type(const object_type&)
+			{
+				value.CopyFrom(other.value);
+			}
+			explicit value_type(object_type&&) : value(std::move(other.value)) { }
+
+			using iterator = GenericMemberIterator<false>;
+			using const_iterator = GenericMemberIterator<true>;
+		protected:
+			explicit value_type(rapidjson::Type type) : value(type) {}
+
+			typename document_type::ValueType value;
+		};
+		struct array_type : value_type
+		{
+			array_type() : value_type(rapidjson::kArrayType) {}
+			array_type(const array_type&) = default;
+			array_type& operator =(const array_type&) = default;
+			array_type(array_type&&) = default;
+			array_type& operator =(array_type&&) = default;
+
+			template <typename T>
+			array_type(T begin, T end)
+				: array_type()
+			{
+				for (const auto& it = begin; it != end; ++it)
+					value.PushBack(*it);
+			}
+
+			value_type& operator[](size_t i)
+			{
+				return value[value_type(i)];
+			}
+
+			const_iterator begin() const -> decltype(value.MemberBegin())
+			{
+				return value.MemberBegin();
+			}
+
+			const_iterator end() const -> decltype(value.MemberEnd())
+			{
+				return value.MemberEnd();
+			}
+
+			iterator begin() -> decltype(value.MemberBegin())
+			{
+				return value.MemberBegin();
+			}
+
+			iterator end() -> decltype(value.MemberEnd())
+			{
+				return value.MemberEnd();
+			}
+		};
+		struct object_type : value_type
+		{
+			object_type() : value_type(rapidjson::kObjectType) {}
+			object_type(const object_type&) = default;
+			object_type& operator =(const object_type&) = default;
+			object_type(object_type&&) = default;
+			object_type& operator =(object_type&&) = default;
 
 			value_type& operator[](const std::string& key)
 			{
@@ -56,8 +141,6 @@ namespace jwt
 				else
 					return value.AddMember(value_type(key.c_str()), value_type(), Allocator()); // TODO: Fix using same allocator
 			}
-		private:
-			value_type value;
 		};
 
 		static json::type get_type(const value_type& val) {
@@ -72,7 +155,7 @@ namespace jwt
 			throw std::logic_error("invalid type");
 		}
 
-		static const object_type& as_object(const value_type& val) {
+		static object_type as_object(const value_type& val) {
 			if (!val.IsObject())
 				throw std::bad_cast();
 			return val;
@@ -84,7 +167,7 @@ namespace jwt
 			return val.GetString();
 		}
 
-		static const array_type& as_array(const value_type& val) {
+		static array_type as_array(const value_type& val) {
 			if (!val.IsArray())
 				throw std::bad_cast();
 			return val.GetArray();
@@ -233,7 +316,7 @@ TEST(RapidJsonTest, SetObject) {
 	ASSERT_EQ(object.get_type() , jwt::json::type::object);
 
 	auto token = jwt::create<jwt::default_rapidjson_traits>()
-		.set_payload_claim("namespace", object)
+		.set_payload_claim("namespace", std::move(object))
 		.sign(jwt::algorithm::hs256("test"));
 	ASSERT_EQ(token, "eyJhbGciOiJIUzI1NiJ9.eyJuYW1lc3BhY2UiOnsiYXBpLXgiOlsxXX19.F8I6I2RcSF98bKa0IpIz09fRZtHr1CWnWKx2za-tFQA");
 }

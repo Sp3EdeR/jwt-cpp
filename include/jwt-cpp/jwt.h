@@ -1462,7 +1462,8 @@ namespace jwt {
 		template <typename traits_type, typename value_type, typename object_type>
 		struct supports_as_object {
 			static constexpr auto value =
-				std::is_constructible<value_type, object_type>::value &&
+				// TODO: Add object -> value conversion test
+				//std::is_constructible<value_type, object_type>::value &&
 				is_detected<as_object_function, traits_type>::value &&
 				std::is_function<as_object_function<traits_type>>::value &&
 				is_as_object_signature<traits_type, value_type, object_type>::value;
@@ -1472,12 +1473,13 @@ namespace jwt {
 		using as_array_function = decltype(traits_type::as_array);
 
 		template <typename traits_type, typename value_type, typename array_type>
-		using is_as_array_signature = typename std::is_same<as_array_function<traits_type>, array_type(const value_type&)>;
+		using is_as_array_signature = typename std::is_same<typename std::decay<as_array_function<traits_type>>::type, typename std::decay<array_type(const value_type&)>::type>;
 
 		template <typename traits_type, typename value_type, typename array_type>
 		struct supports_as_array {
 			static constexpr auto value =
-			    std::is_constructible<value_type, array_type>::value &&
+				// TODO: Add array -> value conversion test
+				//std::is_constructible<value_type, array_type>::value &&
 				is_detected<as_array_function, traits_type>::value &&
 				std::is_function<as_array_function<traits_type>>::value &&
 				is_as_array_signature<traits_type, value_type, array_type>::value;
@@ -1573,6 +1575,7 @@ namespace jwt {
 		struct is_valid_json_value {
 			static constexpr auto value =
 				std::is_default_constructible<value_type>::value &&
+				// TODO: Readd copyable values
 				//std::is_constructible<value_type, const value_type&>::value && // a more generic is_copy_constructible
 				std::is_move_constructible<value_type>::value &&
 				//std::is_assignable<value_type, value_type>::value &&
@@ -1602,7 +1605,7 @@ namespace jwt {
 		template<typename value_type, typename string_type, typename object_type, typename array_type>
 		struct is_valid_json_types {
 			// Internal assertions for better feedback
-			//static_assert(is_valid_json_value<value_type>::value, "value type must meet basic requirements, default constructor, copyable, moveable");
+			static_assert(is_valid_json_value<value_type>::value, "value type must meet basic requirements, default constructor, copyable, moveable");
 			static_assert(is_valid_json_object<value_type, string_type, object_type>::value, "object_type must be a string_type to value_type container");
 			static_assert(is_valid_json_array<value_type, array_type>::value, "array_type must be a container of value_type");
 		
